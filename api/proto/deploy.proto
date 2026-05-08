@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package deploy.v1;
+
+option go_package = "deploy-service/pkg/deploypb;deploypb";
+
+service DeployService {
+  rpc Deploy(DeployRequest) returns (stream DeployEvent);
+  rpc BootstrapRepository(BootstrapRepositoryRequest) returns (stream DeployEvent);
+}
+
+message DeployRequest {
+  string repo_url = 1;
+  string access_token = 2;
+  string image_name = 3;
+  string domain = 4;
+  string branch = 5;
+  string app_type = 6;
+  string node_version = 7;
+}
+
+message BootstrapRepositoryRequest {
+  string repo_url = 1;
+  string access_token = 2;
+  string image_name = 3;
+  string domain = 4;
+  string branch = 5;
+  string app_type = 6;
+  string node_version = 7;
+}
+
+message DeployEvent {
+  enum Level {
+    LEVEL_UNSPECIFIED = 0;
+    LEVEL_INFO = 1;
+    LEVEL_SUCCESS = 2;
+    LEVEL_ERROR = 3;
+  }
+
+  Level level = 1;
+  string stage = 2;
+  string message = 3;
+  string image_name = 4;
+  string container_name = 5;
+  string domain = 6;
+}

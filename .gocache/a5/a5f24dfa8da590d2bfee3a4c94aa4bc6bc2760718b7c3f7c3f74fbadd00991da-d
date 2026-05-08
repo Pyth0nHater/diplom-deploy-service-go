@@ -1,0 +1,6 @@
+./delete_response.go
+./image.go
+./image_history.go
+./manifest.go
+./opts.go
+./summary.go
