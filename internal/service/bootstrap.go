@@ -152,7 +152,7 @@ func (s *BuilderService) BootstrapRepository(ctx context.Context, params DeployP
 		}
 	}
 
-	if err := emit(EventLevelInfo, "secrets", "Required GitHub secrets: SSH_HOST, SSH_USER, SSH_KEY, optional SSH_PORT, optional REPO_ACCESS_TOKEN", result); err != nil {
+	if err := emit(EventLevelInfo, "secrets", "GitHub Actions secrets DEPLOY_TOKEN and DEPLOY_API_URL will be configured automatically", result); err != nil {
 		return nil, err
 	}
 	if err := emit(EventLevelSuccess, "done", fmt.Sprintf("Bootstrap completed and pushed to %s", branchName), result); err != nil {
@@ -266,9 +266,8 @@ func bootstrapCompose(params DeployParams, profile appProfile) string {
 }
 
 func bootstrapWorkflow(branchName string, params DeployParams) string {
-	repoURL := normalizeRepoURL(params.RepoURL)
 	return fmt.Sprintf(
-		"name: Remote Deploy\n"+
+		"name: Deploy\n"+
 			"\n"+
 			"on:\n"+
 			"  push:\n"+
@@ -279,49 +278,10 @@ func bootstrapWorkflow(branchName string, params DeployParams) string {
 			"  deploy:\n"+
 			"    runs-on: ubuntu-latest\n"+
 			"    steps:\n"+
-			"      - name: Deploying to Server\n"+
-			"        uses: appleboy/ssh-action@v1.0.3\n"+
-			"        with:\n"+
-			"          host: ${{ secrets.SSH_HOST }}\n"+
-			"          username: ${{ secrets.SSH_USER }}\n"+
-			"          key: ${{ secrets.SSH_KEY }}\n"+
-			"          port: ${{ secrets.SSH_PORT }}\n"+
-			"          script: |\n"+
-			"            APP_DIR=\"/srv/apps/%s\"\n"+
-			"            REPO_URL=\"%s\"\n"+
-			"            REPO_BRANCH=\"%s\"\n"+
-			"            AUTH_PREFIX=\"\"\n"+
-			"\n"+
-			"            if [ -n \"${{ secrets.REPO_ACCESS_TOKEN }}\" ]; then\n"+
-			"              AUTH_PREFIX=\"x-access-token:${{ secrets.REPO_ACCESS_TOKEN }}@\"\n"+
-			"            fi\n"+
-			"\n"+
-			"            AUTHED_REPO_URL=\"${REPO_URL/https:\\/\\//https://${AUTH_PREFIX}}\"\n"+
-			"\n"+
-			"            mkdir -p /srv/apps\n"+
-			"\n"+
-			"            if [ ! -d \"$APP_DIR/.git\" ]; then\n"+
-			"              rm -rf \"$APP_DIR\"\n"+
-			"              git clone --branch \"$REPO_BRANCH\" \"$AUTHED_REPO_URL\" \"$APP_DIR\"\n"+
-			"            fi\n"+
-			"\n"+
-			"            cd \"$APP_DIR\" || exit 1\n"+
-			"            git remote set-url origin \"$AUTHED_REPO_URL\"\n"+
-			"            git fetch origin \"$REPO_BRANCH\"\n"+
-			"            git reset --hard \"origin/$REPO_BRANCH\"\n"+
-			"\n"+
-			"            cat > .deploy.env <<'EOF'\n"+
-			"            TRAEFIK_NETWORK=%s\n"+
-			"            EOF\n"+
-			"\n"+
-			"            docker network create %s >/dev/null 2>&1 || true\n"+
-			"            docker compose --env-file .deploy.env -f docker-compose.deploy.yml up -d --build --force-recreate --remove-orphans\n"+
-			"            docker image prune -f\n",
+			"      - name: Trigger deploy\n"+
+			"        run: |\n"+
+			"          curl -f -X POST \"${{ secrets.DEPLOY_API_URL }}\" \\\n"+
+			"            -H \"X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}\"\n",
 		branchName,
-		sanitizeName(params.ImageName),
-		repoURL,
-		branchName,
-		defaultTraefikNetwork,
-		defaultTraefikNetwork,
 	)
 }

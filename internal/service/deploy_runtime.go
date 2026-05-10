@@ -161,6 +161,23 @@ func (s *BuilderService) Deploy(ctx context.Context, params DeployParams, emit E
 	return result, nil
 }
 
+func (s *BuilderService) Undeploy(ctx context.Context, imageName string) error {
+	containerName := ContainerName(imageName)
+	err := s.dockerCli.ContainerStop(ctx, containerName, container.StopOptions{})
+	if err != nil {
+		// ignore "not found" — container may already be stopped or never existed
+		if !strings.Contains(err.Error(), "No such container") {
+			return fmt.Errorf("stop container %s: %w", containerName, err)
+		}
+	}
+	if err := s.dockerCli.ContainerRemove(ctx, containerName, container.RemoveOptions{Force: true}); err != nil {
+		if !strings.Contains(err.Error(), "No such container") {
+			return fmt.Errorf("remove container %s: %w", containerName, err)
+		}
+	}
+	return nil
+}
+
 func (s *BuilderService) verifyStartedContainer(ctx context.Context, containerID string) error {
 	time.Sleep(1200 * time.Millisecond)
 

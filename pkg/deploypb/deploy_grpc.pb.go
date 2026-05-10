@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.1
-// source: api/proto/deploy.proto
+// source: deploy.proto
 
 package deploypb
 
@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	DeployService_Deploy_FullMethodName              = "/deploy.v1.DeployService/Deploy"
 	DeployService_BootstrapRepository_FullMethodName = "/deploy.v1.DeployService/BootstrapRepository"
+	DeployService_Undeploy_FullMethodName            = "/deploy.v1.DeployService/Undeploy"
 )
 
 // DeployServiceClient is the client API for DeployService service.
@@ -29,6 +30,7 @@ const (
 type DeployServiceClient interface {
 	Deploy(ctx context.Context, in *DeployRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeployEvent], error)
 	BootstrapRepository(ctx context.Context, in *BootstrapRepositoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeployEvent], error)
+	Undeploy(ctx context.Context, in *UndeployRequest, opts ...grpc.CallOption) (*UndeployResponse, error)
 }
 
 type deployServiceClient struct {
@@ -77,12 +79,23 @@ func (c *deployServiceClient) BootstrapRepository(ctx context.Context, in *Boots
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type DeployService_BootstrapRepositoryClient = grpc.ServerStreamingClient[DeployEvent]
 
+func (c *deployServiceClient) Undeploy(ctx context.Context, in *UndeployRequest, opts ...grpc.CallOption) (*UndeployResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UndeployResponse)
+	err := c.cc.Invoke(ctx, DeployService_Undeploy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DeployServiceServer is the server API for DeployService service.
 // All implementations must embed UnimplementedDeployServiceServer
 // for forward compatibility.
 type DeployServiceServer interface {
 	Deploy(*DeployRequest, grpc.ServerStreamingServer[DeployEvent]) error
 	BootstrapRepository(*BootstrapRepositoryRequest, grpc.ServerStreamingServer[DeployEvent]) error
+	Undeploy(context.Context, *UndeployRequest) (*UndeployResponse, error)
 	mustEmbedUnimplementedDeployServiceServer()
 }
 
@@ -98,6 +111,9 @@ func (UnimplementedDeployServiceServer) Deploy(*DeployRequest, grpc.ServerStream
 }
 func (UnimplementedDeployServiceServer) BootstrapRepository(*BootstrapRepositoryRequest, grpc.ServerStreamingServer[DeployEvent]) error {
 	return status.Error(codes.Unimplemented, "method BootstrapRepository not implemented")
+}
+func (UnimplementedDeployServiceServer) Undeploy(context.Context, *UndeployRequest) (*UndeployResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Undeploy not implemented")
 }
 func (UnimplementedDeployServiceServer) mustEmbedUnimplementedDeployServiceServer() {}
 func (UnimplementedDeployServiceServer) testEmbeddedByValue()                       {}
@@ -142,13 +158,36 @@ func _DeployService_BootstrapRepository_Handler(srv interface{}, stream grpc.Ser
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type DeployService_BootstrapRepositoryServer = grpc.ServerStreamingServer[DeployEvent]
 
+func _DeployService_Undeploy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UndeployRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeployServiceServer).Undeploy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DeployService_Undeploy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeployServiceServer).Undeploy(ctx, req.(*UndeployRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DeployService_ServiceDesc is the grpc.ServiceDesc for DeployService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var DeployService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "deploy.v1.DeployService",
 	HandlerType: (*DeployServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Undeploy",
+			Handler:    _DeployService_Undeploy_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Deploy",
@@ -161,5 +200,5 @@ var DeployService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "api/proto/deploy.proto",
+	Metadata: "deploy.proto",
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"deploy-service/internal/service"
 	"strings"
 
@@ -115,6 +116,16 @@ func (h *DeployHandler) BootstrapRepository(req *deploypb.BootstrapRepositoryReq
 	}
 
 	return nil
+}
+
+func (h *DeployHandler) Undeploy(ctx context.Context, req *deploypb.UndeployRequest) (*deploypb.UndeployResponse, error) {
+	if strings.TrimSpace(req.GetImageName()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "image_name is required")
+	}
+	if err := h.builder.Undeploy(ctx, req.GetImageName()); err != nil {
+		return &deploypb.UndeployResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &deploypb.UndeployResponse{Success: true, Message: "container stopped and removed"}, nil
 }
 
 func mapLevel(level service.EventLevel) deploypb.DeployEvent_Level {
